@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Fake `jobstats` for local testing of gpu_jobstats.py.
+
+Accepts `mock_jobstats [--json|-j] [-c cluster] <jobid>` and prints a
+deterministic, plausible jobstats JSON blob keyed off the jobid. About 4% of
+jobs deterministically "fail" to exercise the error path.
+"""
+import hashlib
+import json
+import random
+import sys
+
+args = [a for a in sys.argv[1:] if a not in ("--json", "-j")]
+if args and args[0] == "-c":
+    args = args[2:]
+if not args:
+    sys.exit("usage: mock_jobstats [--json|-j] jobid")
+jobid = args[0]
+
+rng = random.Random(int(hashlib.md5(jobid.encode()).hexdigest(), 16))
+if rng.random() < 0.04:
+    print("Error: job not found in the Prometheus database", file=sys.stderr)
+    sys.exit(1)
+
+n_gpus = rng.choice([1, 1, 2, 4, 8])
+elapsed = rng.uniform(600, 86400)
+gpu_total = 192 * 1024**3  # B200
+node = f"b{rng.randint(1, 24):04d}"
+cpus = rng.choice([16, 32, 64, 96])
+mem_total = 2 * 1024**4
+
+base_util = rng.uniform(2, 98)
+util = {str(i): round(min(100, max(0, base_util + rng.uniform(-10, 10))), 1)
+        for i in range(n_gpus)}
+gused = {str(i): int(gpu_total * rng.uniform(0.05, 0.95)) for i in range(n_gpus)}
+
+print(json.dumps({
+    "gpus": n_gpus,
+    "total_time": round(elapsed, 1),
+    "nodes": {
+        node: {
+            "cpus": cpus,
+            "total_time": round(elapsed * cpus * rng.uniform(0.05, 0.9), 1),
+            "used_memory": int(mem_total * rng.uniform(0.02, 0.6)),
+            "total_memory": mem_total,
+            "gpu_utilization": util,
+            "gpu_used_memory": gused,
+            "gpu_total_memory": {str(i): gpu_total for i in range(n_gpus)},
+        }
+    },
+}))
