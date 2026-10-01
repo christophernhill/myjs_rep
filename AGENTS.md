@@ -31,7 +31,32 @@ exported CSVs in `user_csvs/`) carries real usernames and must stay out of
 git — the `.gitignore` covers these; keep it that way. For docs, tests, and
 examples always use `sample_jobs.txt`.
 
-This **is a git repository** (local only, no remote). Commit messages end
+## Publishing / remote safety
+
+This repository has a public upstream — resolve it with `git remote -v`
+rather than assuming an owner/name. The working tree holds real cluster
+data alongside the public code, so treat every remote operation as a
+release:
+
+- **Before creating a remote or pushing:** audit what will actually go out
+  with `git ls-files` — the directory listing is **not** the tracked set —
+  and confirm the guards still hold:
+  `git check-ignore -v mit_jobs.txt gpu_jobstats.duckdb` must match both.
+- **After any push:** list the remote tree and confirm nothing private
+  landed — no `mit_jobs*`, `*.duckdb`, `*.csv`, `user_csvs/` (`gh` fills
+  the placeholders from the current repo's remote and branch):
+  ```sh
+  gh api 'repos/{owner}/{repo}/git/trees/{branch}?recursive=1' --jq '.tree[].path'
+  ```
+- **Report only verified facts.** Never tell the user a file was tracked,
+  committed, or published without checking `git ls-files` /
+  `git log --name-status` / the remote tree first. A false "real data
+  leaked" report is as costly as a leak: on 2026-10-01 one triggered an
+  emergency deletion of the public repo over a file that was never in git.
+- Read this file in full **before** repo-level actions (publishing,
+  licensing, history rewrites, remote changes) — not after.
+
+This **is a git repository**. Commit messages end
 with an `AI Assisted` line — do **not** add `Co-Authored-By:`/"Generated
 with" agent attribution lines. There is a `.venv` (gitignored); if missing,
 recreate it before running anything:
