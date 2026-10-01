@@ -1,0 +1,12 @@
+# Real cluster data with real usernames - never commit.
+# Use sample_jobs.txt (anonymized via ./anonymize_sacct) instead.
+mit_jobs.txt
+
+# Databases and CSV exports built from real data also carry real usernames.
+*.duckdb
+user_csvs/
+*.csv
+
+# Local environment / build artifacts
+.venv/
+__pycache__/
